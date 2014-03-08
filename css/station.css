@@ -1,0 +1,9 @@
+.station line {
+    stroke: #ddd;
+    stroke-dasharray: 1, 1;
+    shape-rendering: crispEdges;
+}
+
+.station text {
+    text-anchor: end;
+}

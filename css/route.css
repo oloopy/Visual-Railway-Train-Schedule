@@ -1,0 +1,101 @@
+.route path {
+    fill: none;
+    stroke-width: 1px;
+}
+
+.route circle {
+    stroke: #fff;
+}
+
+.route .G path {
+    stroke: #d35400;
+}
+
+.route .G circle {
+    fill: #d35400;
+}
+
+.route .D path {
+    stroke: #f39c12;
+}
+
+.route .D circle {
+    fill: #f39c12;
+}
+
+.route .C path {
+    stroke: #e74c3c;
+}
+
+.route .C circle {
+    fill: #e74c3c;
+}
+
+.route .Z path {
+    stroke: #e67e22;
+}
+
+.route .Z circle {
+    fill: #e67e22;
+}
+
+.route .T path {
+    stroke: #2ecc71;
+}
+
+.route .T circle {
+    fill: #2ecc71;
+}
+
+.route .K path {
+    stroke: #f1c40f;
+}
+
+.route .K circle {
+    fill: #f1c40f;
+}
+
+.route .K path {
+    stroke: #1abc9c;
+}
+
+.route .K circle {
+    fill: #1abc9c;
+}
+
+.route .N path {
+    stroke: #7f8c8d;
+}
+
+.route .N circle {
+    fill: #7f8c8d;
+}
+
+.route .L path {
+    stroke: #7f8c8d;
+}
+
+.route .L circle {
+    fill: #7f8c8d;
+}
+
+.route .A path {
+    stroke: #7f8c8d;
+}
+
+.route .A circle {
+    fill: #7f8c8d;
+}
+
+.route .Y path {
+    stroke: #7f8c8d;
+}
+
+.route .Y circle {
+    fill: #7f8c8d;
+}
+
+.route path:hover{
+    stroke: #1dd2af;
+    stroke-width: 2px;
+}

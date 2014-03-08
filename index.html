@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Visual Railway Train Schedule</title>
+
+    <link rel="stylesheet" type="text/css" href="css/main.css"/>
+    <link rel="stylesheet" type="text/css" href="css/station.css"/>
+    <link rel="stylesheet" type="text/css" href="css/route.css"/>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.css"/>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="navbar navbar-default" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="">Train Schedule</a>
+            </div>
+            <div class="navbar-collapse collapse">
+                <ul class="nav navbar-nav">
+                    <li>
+                        <a href="">Demo</a>
+                    </li>
+                    <li>
+                        <a href="">Source</a>
+                    </li>
+                </ul>
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="http://oloopy.github.io/about/">
+                        <small>Bin Lu</small>
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <p>Give an introduction here for Visual Railway Train Schedule</p>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+
+        <div class="panel-heading">
+            <h4 class="panel-title">
+                <span class="glyphicon glyphicon-search">&nbsp;</span>
+                Search
+            </h4>
+        </div>
+
+        <div class="panel-body">
+            <ul class="list-group" style="margin-bottom: 2px">
+                <li class="list-group-item">
+                    <div class="input-group">
+                        <span class="input-group-addon">Departure</span>
+                        <input type="text" class="form-control" placeholder="e.g. 上海虹桥">
+                        <span class="input-group-addon">Arrival</span>
+                        <input type="text" class="form-control" placeholder="e.g. 北京南">
+                        <span class="input-group-btn">
+                            <button class="btn btn-default" type="button">Submit</button>
+                        </span>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="input-group">
+                        <span class="input-group-addon">Route</span>
+                        <input type="text" class="form-control" placeholder="e.g. G101">
+                        <span class="input-group-btn">
+                            <button class="btn btn-default" type="button">Submit</button>
+                        </span>
+                    </div>
+                </li>
+            </ul>
+            <span><small>* choose either way above to perform a search</small></span>
+        </div>
+
+    </div>
+
+
+    <div class="panel panel-default">
+
+        <div class="panel-heading">
+            <h4 class="panel-title">
+                <span class="glyphicon glyphicon-road">&nbsp;</span>
+                <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
+                    Diagram
+                </a>
+            </h4>
+        </div>
+
+        <div id="collapseOne" class="panel-collapse collapse in">
+
+            <div class="progress progress-striped active" style="height: 10px; margin: 20px;">
+                <div class="progress-bar" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"
+                     style="width: 100%;">
+                    <span class="sr-only">45% Complete</span>
+                </div>
+            </div>
+            <div class="container-fluid" id="diagram" style="display: block; margin-left: auto; margin-right: auto"></div>
+        </div>
+
+    </div>
+
+    <div class="panel panel-default">
+
+        <div class="panel-heading">
+            <h4 class="panel-title">
+                <span class="glyphicon glyphicon-dashboard">&nbsp;</span>
+                <a data-toggle="collapse" data-parent="#accordion" href="#collapseTwo">
+                    Analysis
+                </a>
+            </h4>
+        </div>
+
+        <div id="collapseTwo" class="panel-collapse collapse in">
+            <div class="panel-body">
+                Analysis graph here
+            </div>
+        </div>
+
+    </div>
+
+    <div class="well">
+
+        <p>This example is a quick exercise to illustrate how the default, static navbar and fixed to top navbar work.
+            It includes the responsive CSS and HTML, so it also adapts to your viewport and device.</p>
+
+        <p>
+            <a class="btn btn-lg btn-primary" href="#" role="button">View Source Code »</a>
+        </p>
+
+    </div>
+
+</div>
+
+<!--jQuery as Bootstrap dependency-->
+<script type="text/javascript" src="js/jquery-1.11.0.js"></script>
+<!--<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>-->
+
+<!--Bootstrap-->
+<script type="text/javascript" src="js/bootstrap.js"></script>
+<!--<script type="text/javascript" src="js/bootstrap.min.js"></script>-->
+
+<!--D3.js-->
+<script type="text/javascript" src="js/d3.js" charset="utf-8"></script>
+<!--<script type="text/javascript" src="js/d3.min.js" charset="utf-8"></script>-->
+
+<!--Underscore.js-->
+<script type="text/javascript" src="js/underscore.js"></script>
+<!--<script type="text/javascript" src="js/underscore-min.js" charset="utf-8"></script>-->
+
+<!--Main Logic-->
+<script>
+
+var routes = [],
+        stations = [],
+        duration = [],
+        departure = "上海虹桥",
+        arrival = "北京南",
+        isDisplayOppositeRoute = true;
+
+var parseTime = d3.time.format("%m/%d/%Y %I:%M:%S %p").parse,
+        timeFormatOnScreen = d3.time.format("%m/%d/%H:%M");
+
+var width,height,margin,xScale,yScale,xAxis,line,svg;
+
+d3.csv("data/Station.csv", function (error, rs) {
+
+    findRoutes(rs);
+
+    d3.csv("data/Route.csv", function (error, rr) {
+
+        filterRoutes(rr);
+
+        initSvg();
+
+        renderStation();
+
+        renderRoute();
+
+        $('.progress').hide();
+    });
+});
+
+function findRoutes(rs) {
+
+    // 改成where
+    _.each(rs, function (r) {
+        if ((r["Departure Station"] === departure && r["Arrival Station"] === arrival) ||
+                (isDisplayOppositeRoute && ((r["Departure Station"] === arrival && r["Arrival Station"] === departure)))) {
+            if (_.find(routes, function (d) {
+                return d.name === r["Route Name"];
+            }) === undefined) {
+                routes.push({
+                    name: r["Route Name"],
+                    departure: r["Departure Station"],
+                    arrival: r["Arrival Station"],
+                    firstEntry: +r["First Entry"],
+                    lastEntry: +r["Last Entry"]
+                });
+            }
+        }
+    });
+}
+
+function filterRoutes(rr) {
+
+    var maxPosition;
+
+    if (isDisplayOppositeRoute) {
+        maxPosition = +_.last(_.sortBy(getSpecificRoute(rr, routes[0]), function (r) {
+            return +r["Station Sequence"];
+        }))["Mileage"];
+    }
+
+    _.each(routes, function (r) {
+
+        r.stops = [];
+        r.stopSequence = [];
+
+        _.each(getSpecificRoute(rr, r), function (d) {
+
+            if (!_.has(r, "type")) {
+                r.type = d["Route Type"]
+            }
+
+            var arrivalTime = parseTime(d["Arrival Time"]);
+            var departureTime = parseTime(d["Departure Time"]);
+
+            r.stops.push({
+                sequence: +d["Station Sequence"],
+                name: d["Station Name"],
+                arrivalTime: arrivalTime,
+                departureTime: departureTime,
+                idleTime: +d["Idle Time"],
+                travelTime: +d["Travel Time"],
+                tripDuration: +d["Trip Duration"],
+                distance: +d["Distance"],
+                position: +d["Mileage"],
+                speed: +d["Speed"]
+            });
+
+            r.stopSequence.push({
+                time: arrivalTime,
+                position: +d["Mileage"]
+            }, {
+                time: departureTime,
+                position: +d["Mileage"]
+            });
+
+            duration.push(arrivalTime, departureTime);
+
+
+            if (_.find(stations, function (station) {
+                return station.name === d["Station Name"]
+            }) === undefined) {
+                stations.push({
+                    name: d["Station Name"],
+                    position: +d["Mileage"]
+                });
+
+                if (isDisplayOppositeRoute && r.departure === arrival) {
+                    _.last(stations).position = maxPosition - _.last(stations).position;
+                }
+            }
+        });
+
+        _.sortBy(r.stopSequence, function (d) {
+            return d.position;
+        });
+    });
+
+    // sort stations by position
+    stations = _.sortBy(stations, function (s) {
+        return s.position;
+    });
+
+    if (isDisplayOppositeRoute) {
+        _.each(_.where(routes, {departure: arrival}), function (r) {
+            _.each(r.stops, function (d) {
+                d.position = maxPosition - d.position;
+            });
+            _.each(r.stopSequence, function (d) {
+                d.position = maxPosition - d.position;
+            });
+        });
+    }
+}
+
+function getSpecificRoute(rr, route) {
+    var routeForReturn = [];
+    for (var i = route.firstEntry; i <= route.lastEntry; i++) {
+        routeForReturn.push(rr[i]);
+    }
+    return routeForReturn;
+}
+
+function initSvg() {
+    margin = {top: 20, right: 30, bottom: 20, left: 100};
+    width = 1100 - margin.left - margin.right;
+    height = 500 - margin.top - margin.bottom;
+
+    if (stations.length > 20) {
+        height *= stations.length / 20;
+    }
+
+    xScale = d3.time.scale()
+            .domain(d3.extent(duration))
+            .range([0, width]);
+
+    yScale = d3.scale.linear()
+            .domain(d3.extent(stations, function (d) {
+                return d.position;
+            }))
+            .range([0, height]);
+
+    xAxis = d3.svg.axis()
+            .scale(xScale)
+            .ticks(6)
+            .tickFormat(timeFormatOnScreen);
+
+    line = d3.svg.line()
+            .x(function (d) {
+                return xScale(d.time);
+            })
+            .y(function (d) {
+                return yScale(d.position);
+            });
+
+
+    svg = d3.select("#diagram").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    svg.append("g")
+            .attr("class", "x top axis")
+            .call(xAxis.orient("top"));
+
+    svg.append("g")
+            .attr("class", "x bottom axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xAxis.orient("bottom"));
+
+    svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("y", -margin.top)
+            .attr("width", width)
+            .attr("height", height + margin.top + margin.bottom);
+}
+
+function renderStation() {
+
+    var station = svg.append("g")
+            .attr("class", "station")
+            .selectAll("g")
+            .data(stations)
+            .enter().append("g")
+            .attr("transform", function (d) {
+                return "translate(0," + yScale(d.position) + ")";
+            });
+
+    station.append("text")
+            .attr("x", -6)
+            .attr("dy", ".35em")
+            .text(function (d) {
+                return d.name;
+            });
+
+    station.append("line")
+            .attr("x2", width);
+
+}
+
+function renderRoute() {
+    var route = svg.append("g")
+            .attr("class", "route")
+            .attr("clip-path", "url(#clip)")
+            .selectAll("g")
+            .data(routes)
+            .enter().append("g")
+            .attr("class", function (d) {
+                return d.type;
+            });
+
+    route.append("path")
+            .attr("d", function (d) {
+                return line(d.stopSequence);
+            });
+
+    route.selectAll("circle")
+            .data(function (d) {
+                return d.stopSequence;
+            })
+            .enter().append("circle")
+            .attr("transform", function (d) {
+                return "translate(" + xScale(d.time) + "," + yScale(d.position) + ")";
+            });
+//            .attr("r", 1.2);
+}
+</script>
+
+</body>
+
+</html>
