@@ -106,7 +106,7 @@
                     <span class="sr-only">45% Complete</span>
                 </div>
             </div>
-            <div class="container-fluid" id="diagram"
+            <div class="container" id="diagram"
                  style="display: block; margin-left: auto; margin-right: auto"></div>
         </div>
 
@@ -297,13 +297,13 @@ function getTrajectoriesOfRoute(trajectoryCollection, route) {
 }
 
 function initSvg() {
-    margin = {top: 20, right: 30, bottom: 20, left: 100};
-    width = 1100 - margin.left - margin.right;
-    height = 500 - margin.top - margin.bottom;
+    margin = {top: 20, right: 100, bottom: 20, left: 100};
+    width = 1200 - margin.left - margin.right;
+    height = 600 - margin.top - margin.bottom;
 
-    if (stations.length > 20) {
-        height *= stations.length / 20;
-    }
+//    if (stations.length > 20) {
+//        height *= stations.length / 20;
+//    }
 
     xScale = d3.time.scale()
             .domain(d3.extent(duration))
@@ -328,10 +328,9 @@ function initSvg() {
                 return yScale(d.position);
             });
 
-
     svg = d3.select("#diagram").append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
+            .attr("viewBox", "0 0 " + (width + margin.left + margin.right) + " " + (height + margin.top + margin.bottom))
+            .attr("preserveAspectRatio", "xMinYMin meet")
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
