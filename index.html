@@ -106,7 +106,8 @@
                     <span class="sr-only">45% Complete</span>
                 </div>
             </div>
-            <div class="container-fluid" id="diagram" style="display: block; margin-left: auto; margin-right: auto"></div>
+            <div class="container-fluid" id="diagram"
+                 style="display: block; margin-left: auto; margin-right: auto"></div>
         </div>
 
     </div>
@@ -159,6 +160,8 @@
 <script type="text/javascript" src="js/underscore.js"></script>
 <!--<script type="text/javascript" src="js/underscore-min.js" charset="utf-8"></script>-->
 
+<script type="text/javascript" src="js/jszip.js"></script>
+
 <!--Main Logic-->
 <script>
 
@@ -172,15 +175,22 @@ var routes = [],
 var parseTime = d3.time.format("%m/%d/%Y %I:%M:%S %p").parse,
         timeFormatOnScreen = d3.time.format("%m/%d/%H:%M");
 
-var width,height,margin,xScale,yScale,xAxis,line,svg;
+var width, height, margin, xScale, yScale, xAxis, line, svg;
 
-d3.csv("data/Station.csv", function (error, rs) {
+var xhr = new XMLHttpRequest();
 
-    findRoutes(rs);
+var indexCollection = [];
+var trajectoryCollection = [];
 
-    d3.csv("data/Route.csv", function (error, rr) {
+xhr.onreadystatechange = function () {
 
-        filterRoutes(rr);
+    if (this.readyState == 4 && this.status == 200) {
+
+        indexCollection = getIndexCollection(new JSZip(this.responseText).file("Index.csv").asText());
+        trajectoryCollection = getTrajectoryCollection(new JSZip(this.responseText).file("Trajectory.csv").asText());
+
+        findRoutes(indexCollection);
+        filterRoutes(trajectoryCollection);
 
         initSvg();
 
@@ -189,92 +199,74 @@ d3.csv("data/Station.csv", function (error, rs) {
         renderRoute();
 
         $('.progress').hide();
-    });
-});
 
-function findRoutes(rs) {
+    }
+};
+processXhr(xhr);
 
-    _.each(rs, function (r) {
-        if ((r["Departure Station"] === departure && r["Arrival Station"] === arrival) ||
-                (isDisplayOppositeRoute && ((r["Departure Station"] === arrival && r["Arrival Station"] === departure)))) {
-            if (_.find(routes, function (d) {
-                return d.name === r["Route Name"];
+function findRoutes(indexCollection) {
+
+    _.each(indexCollection, function (indexDatum) {
+        if ((indexDatum.departureStation === departure && indexDatum.arrivalStation === arrival) ||
+                (isDisplayOppositeRoute && ((indexDatum.departureStation === arrival && indexDatum.arrivalStation === departure)))) {
+            if (_.find(routes, function (route) {
+                return route.routeName === indexDatum.routeName;
             }) === undefined) {
-                routes.push({
-                    name: r["Route Name"],
-                    departure: r["Departure Station"],
-                    arrival: r["Arrival Station"],
-                    firstEntry: +r["First Entry"],
-                    lastEntry: +r["Last Entry"]
-                });
+                routes.push(indexDatum);
             }
         }
     });
 }
 
-function filterRoutes(rr) {
+function filterRoutes(trajectoryCollection) {
 
+    // maxPostion could have multiple values due to difference of railway paths.
     var maxPosition;
-
     if (isDisplayOppositeRoute) {
-        maxPosition = +_.last(_.sortBy(getSpecificRoute(rr, routes[0]), function (r) {
-            return +r["Station Sequence"];
-        }))["Mileage"];
+        maxPosition = +_.last(_.sortBy(getTrajectoriesOfRoute(trajectoryCollection, routes[0]), function (route) {
+            return route.stationSequence;
+        })).position;
     }
 
-    _.each(routes, function (r) {
+    _.each(routes, function (route) {
 
-        r.stops = [];
-        r.stopSequence = [];
+        route.stops = [];
+        route.stopSequence = [];
 
-        _.each(getSpecificRoute(rr, r), function (d) {
+        _.each(getTrajectoriesOfRoute(trajectoryCollection, route), function (d) {
 
-            if (!_.has(r, "type")) {
-                r.type = d["Route Type"]
+            if (!_.has(route, "type")) {
+                route.type = d.routeType
             }
 
-            var arrivalTime = parseTime(d["Arrival Time"]);
-            var departureTime = parseTime(d["Departure Time"]);
+            route.stops.push(d);
 
-            r.stops.push({
-                sequence: +d["Station Sequence"],
-                name: d["Station Name"],
-                arrivalTime: arrivalTime,
-                departureTime: departureTime,
-                idleTime: +d["Idle Time"],
-                travelTime: +d["Travel Time"],
-                tripDuration: +d["Trip Duration"],
-                distance: +d["Distance"],
-                position: +d["Mileage"],
-                speed: +d["Speed"]
-            });
-
-            r.stopSequence.push({
-                time: arrivalTime,
-                position: +d["Mileage"]
+            route.stopSequence.push({
+                time: d.arrivalTime,
+                position: d.position
             }, {
-                time: departureTime,
-                position: +d["Mileage"]
+                time: d.departureTime,
+                position: d.position
             });
 
-            duration.push(arrivalTime, departureTime);
+            duration.push(d.arrivalTime, d.departureTime);
 
 
             if (_.find(stations, function (station) {
-                return station.name === d["Station Name"]
+                return station.name === d.stationName
             }) === undefined) {
                 stations.push({
-                    name: d["Station Name"],
-                    position: +d["Mileage"]
+                    name: d.stationName,
+                    position: d.position
                 });
 
-                if (isDisplayOppositeRoute && r.departure === arrival) {
+                if (isDisplayOppositeRoute && route.departureStation === arrival) {
                     _.last(stations).position = maxPosition - _.last(stations).position;
                 }
             }
         });
 
-        _.sortBy(r.stopSequence, function (d) {
+        _.sortBy(route.stopSequence, function (d) {
             return d.position;
         });
     });
@@ -285,7 +277,7 @@ function filterRoutes(rr) {
     });
 
     if (isDisplayOppositeRoute) {
-        _.each(_.where(routes, {departure: arrival}), function (r) {
+        _.each(_.where(routes, {departureStation: arrival}), function (r) {
             _.each(r.stops, function (d) {
                 d.position = maxPosition - d.position;
             });
@@ -296,12 +288,12 @@ function filterRoutes(rr) {
     }
 }
 
-function getSpecificRoute(rr, route) {
-    var routeForReturn = [];
+function getTrajectoriesOfRoute(trajectoryCollection, route) {
+    var trajectories = [];
     for (var i = route.firstEntry; i <= route.lastEntry; i++) {
-        routeForReturn.push(rr[i]);
+        trajectories.push(trajectoryCollection[i]);
     }
-    return routeForReturn;
+    return trajectories;
 }
 
 function initSvg() {
@@ -396,7 +388,9 @@ function renderRoute() {
 
     route.append("path")
             .transition()
-            .delay(function(d, i) { return i * 10; })
+            .delay(function (d, i) {
+                return i / routes.length * 1000;
+            })
             .attr("d", function (d) {
                 return line(d.stopSequence);
             });
@@ -410,8 +404,68 @@ function renderRoute() {
             .attr("transform", function (d) {
                 return "translate(" + xScale(d.time) + "," + yScale(d.position) + ")";
             });
-//            .attr("r", 1.2);
 }
+
+function getIndexCollection(content) {
+    var splitContent = content.split(/\r\n|\n/);
+    var headers = splitContent[0].split(',');
+    var collection = [];
+
+    for (var i = 1; i < splitContent.length; i++) {
+        var datum = splitContent[i].split(',');
+        if (datum.length === headers.length) {
+            collection.push({
+                routeName: datum[0],
+                stopStation: datum[1],
+                departureStation: datum[2],
+                arrivalStation: datum[3],
+                firstEntry: +datum[4],
+                lastEntry: +datum[5]
+            });
+        } else {
+//            console.log("Error: Data structure was changed");
+        }
+    }
+    return collection;
+}
+
+function getTrajectoryCollection(content) {
+    var splitContent = content.split(/\r\n|\n/);
+    var headers = splitContent[0].split(',');
+    var collection = [];
+
+    for (var i = 1; i < splitContent.length; i++) {
+        var datum = splitContent[i].split(',');
+        if (datum.length === headers.length) {
+            collection.push({
+                routeName: datum[0],
+                routeType: datum[1],
+                stationSequence: +datum[2],
+                stationName: datum[3],
+                arrivalTime: parseTime(datum[4]),
+                departureTime: parseTime(datum[5]),
+                idleTime: +datum[6],
+                travelTime: +datum[7],
+                duration: +datum[8],
+                distance: +datum[9],
+                position: +datum[10],
+                speed: +datum[11]
+            });
+        } else {
+//            console.log("Error: Data structure was changed");
+        }
+    }
+    return collection;
+}
+
+function processXhr(xhr) {
+    xhr.open('GET', 'data/dataset.zip', true);
+    if (xhr.overrideMimeType) {
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');
+    }
+    xhr.send();
+}
+
 </script>
 
 </body>

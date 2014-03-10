@@ -1,6 +1,10 @@
 .route path {
     fill: none;
     stroke-width: 1px;
+    /*-moz-transition: all 0.1s;*/
+    /*-o-transition: all 0.1s;*/
+    /*-webkit-transition: all 0.1s;*/
+    /*transition: all 0.1s;*/
 }
 
 .route circle {
