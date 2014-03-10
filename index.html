@@ -107,7 +107,15 @@
                 </div>
             </div>
             <div class="container" id="diagram"
-                 style="display: block; margin-left: auto; margin-right: auto"></div>
+                 style="display: block; margin-left: auto; margin-right: auto">
+                <div id="route-tooltip" class="hidden">
+                    <h4 id="route-tooltip-name"></h4>
+
+                    <p id="route-tooltip-current"></p>
+
+                    <p id="route-tooltip-plan"></p>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -173,7 +181,7 @@ var routes = [],
         isDisplayOppositeRoute = true;
 
 var parseTime = d3.time.format("%m/%d/%Y %I:%M:%S %p").parse,
-        timeFormatOnScreen = d3.time.format("%m/%d/%H:%M");
+        timeFormatOnScreen = d3.time.format("%m/%d %H:%M");
 
 var width, height, margin, xScale, yScale, xAxis, line, svg;
 
@@ -242,9 +250,11 @@ function filterRoutes(trajectoryCollection) {
             route.stops.push(d);
 
             route.stopSequence.push({
+                name: d.stationName,
                 time: d.arrivalTime,
                 position: d.position
             }, {
+                name: d.stationName,
                 time: d.departureTime,
                 position: d.position
             });
@@ -394,15 +404,35 @@ function renderRoute() {
                 return line(d.stopSequence);
             });
 
+    route.on("mouseover", function (d) {
 
-    route.selectAll("circle")
-            .data(function (d) {
-                return d.stopSequence;
-            })
-            .enter().append("circle")
-            .attr("transform", function (d) {
-                return "translate(" + xScale(d.time) + "," + yScale(d.position) + ")";
-            });
+        var datePoint = xScale.invert(d3.mouse(this)[0]);
+        var dateSequence = [];
+        _.each(d.stopSequence, function (s) {
+            dateSequence.push(s.time);
+        });
+        var dateIndex = d3.bisect(dateSequence, datePoint);
+
+        d3.select("#route-tooltip")
+                .style("left", (event.pageX + 15) + "px")
+                .style("top", (event.pageY - 15) + "px");
+
+        d3.select("#route-tooltip-name")
+                .html(d.routeName + "&nbsp;&nbsp;&nbsp;" + timeFormatOnScreen(datePoint));
+
+        d3.select("#route-tooltip-current")
+                .html("⬀ " + d.stopSequence[dateIndex - 1].name + "&nbsp;&nbsp;&nbsp;" + timeFormatOnScreen(d.stopSequence[dateIndex - 1].time) + "&nbsp;&nbsp;&nbsp;⬂ " + d.stopSequence[dateIndex].name + "&nbsp;&nbsp;&nbsp;" + timeFormatOnScreen(d.stopSequence[dateIndex].time));
+
+        d3.select("#route-tooltip-plan")
+                .html("⬈ " + d.departureStation + "&nbsp;&nbsp;&nbsp;" + timeFormatOnScreen(_.first(d.stops).departureTime) + "&nbsp;&nbsp;&nbsp;⬊ " + d.arrivalStation + "&nbsp;&nbsp;&nbsp;" + timeFormatOnScreen(_.last(d.stops).departureTime));
+
+        d3.select("#route-tooltip").classed("hidden", false);
+
+    });
+    
+    route.on("mouseout", function () {
+        d3.select("#route-tooltip").classed("hidden", true);
+    });
 }
 
 function getIndexCollection(content) {

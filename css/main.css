@@ -22,6 +22,31 @@ svg {
     shape-rendering: crispEdges;
 }
 
+#route-tooltip {
+    position: absolute;
+    min-width: 200px;
+    height: auto;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.7);
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    border-radius: 3px;
+    -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+    -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
+#route-tooltip.hidden {
+    display: none;
+}
+
+#route-tooltip p {
+    margin: 0;
+    font-family: sans-serif;
+    font-size: 14px;
+    line-height: 1.5em;
+}
 
 /*$base03:    #002b36;*/
 /*$base02:    #073642;*/
