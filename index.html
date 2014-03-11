@@ -67,7 +67,8 @@
                         <span class="input-group-addon">Arrival</span>
                         <input type="text" class="form-control" placeholder="e.g. 北京南">
                         <span class="input-group-btn">
-                            <button class="btn btn-default" type="button">Submit</button>
+                            <button id="btn-submit-departure-arrival" class="btn btn-default" type="button">Submit
+                            </button>
                         </span>
                     </div>
                 </li>
@@ -76,7 +77,7 @@
                         <span class="input-group-addon">Route</span>
                         <input type="text" class="form-control" placeholder="e.g. G101">
                         <span class="input-group-btn">
-                            <button class="btn btn-default" type="button">Submit</button>
+                            <button id="btn-submit-route" class="btn btn-default" type="button">Submit</button>
                         </span>
                     </div>
                 </li>
@@ -176,8 +177,10 @@
 var routes = [],
         stations = [],
         duration = [],
-        departure = "上海虹桥",
-        arrival = "北京南",
+        departure = "",
+        arrival = "",
+        dummyDeparture = "上海虹桥",
+        dummyArrival = "北京南",
         isDisplayOppositeRoute = true;
 
 var parseTime = d3.time.format("%m/%d/%Y %I:%M:%S %p").parse,
@@ -190,27 +193,51 @@ var xhr = new XMLHttpRequest();
 var indexCollection = [];
 var trajectoryCollection = [];
 
-xhr.onreadystatechange = function () {
+function initData() {
+    xhr.onreadystatechange = function () {
 
-    if (this.readyState == 4 && this.status == 200) {
+        if (this.readyState == 4 && this.status == 200) {
 
-        indexCollection = getIndexCollection(new JSZip(this.responseText).file("Index.csv").asText());
-        trajectoryCollection = getTrajectoryCollection(new JSZip(this.responseText).file("Trajectory.csv").asText());
+            indexCollection = getIndexCollection(new JSZip(this.responseText).file("Index.csv").asText());
+            trajectoryCollection = getTrajectoryCollection(new JSZip(this.responseText).file("Trajectory.csv").asText());
 
-        findRoutes(indexCollection);
-        filterRoutes(trajectoryCollection);
+            filterData(dummyDeparture, dummyArrival);
+            renderData();
 
-        initSvg();
+            $('.progress').hide();
 
-        renderStation();
+        }
+    };
+    processXhr(xhr);
+}
 
-        renderRoute();
+function setData(d, a) {
+    clearData();
+    filterData(d, a);
+    renderData();
+}
 
-        $('.progress').hide();
+function clearData() {
+    routes = [];
+    stations = [];
+    duration = [];
+    departure = "";
+    arrival = "";
+}
 
-    }
-};
-processXhr(xhr);
+function filterData(d, a) {
+    departure = d;
+    arrival = a;
+    findRoutes(indexCollection);
+    filterRoutes(trajectoryCollection);
+}
+
+function renderData() {
+    setDiagramTitle();
+    setDiagramSvg();
+    renderStation();
+    renderRoute();
+}
 
 function findRoutes(indexCollection) {
 
@@ -231,9 +258,10 @@ function filterRoutes(trajectoryCollection) {
     // maxPostion could have multiple values due to difference of railway paths.
     var maxPosition;
     if (isDisplayOppositeRoute) {
-        maxPosition = +_.last(_.sortBy(getTrajectoriesOfRoute(trajectoryCollection, routes[0]), function (route) {
-            return route.stationSequence;
-        })).position;
+//        maxPosition = +_.last(_.sortBy(getTrajectoriesOfRoute(trajectoryCollection, routes[0]), function (route) {
+//            return route.stopSequence;
+//        })).position;
+        maxPosition = trajectoryCollection[routes[0].lastEntry].position;
     }
 
     _.each(routes, function (route) {
@@ -247,7 +275,20 @@ function filterRoutes(trajectoryCollection) {
                 route.type = d.routeType
             }
 
-            route.stops.push(d);
+            route.stops.push({
+                routeName: d.routeName,
+                routeType: d.routeType,
+                stopSequence: d.stopSequence,
+                stationName: d.stationName,
+                arrivalTime: d.arrivalTime,
+                departureTime: d.departureTime,
+                idleTime: d.idleTime,
+                travelTime: d.travelTime,
+                duration: d.duration,
+                distance: d.distance,
+                position: d.position,
+                speed: d.speed
+            });
 
             route.stopSequence.push({
                 name: d.stationName,
@@ -306,7 +347,11 @@ function getTrajectoriesOfRoute(trajectoryCollection, route) {
     return trajectories;
 }
 
-function initSvg() {
+function setDiagramTitle() {
+
+}
+
+function setDiagramSvg() {
     margin = {top: 20, right: 100, bottom: 20, left: 100};
     width = 1200 - margin.left - margin.right;
     height = 600 - margin.top - margin.bottom;
@@ -339,6 +384,7 @@ function initSvg() {
             });
 
     svg = d3.select("#diagram").append("svg")
+            .attr("id", "diagram-svg")
             .attr("viewBox", "0 0 " + (width + margin.left + margin.right) + " " + (height + margin.top + margin.bottom))
             .attr("preserveAspectRatio", "xMinYMin meet")
             .append("g")
@@ -428,10 +474,14 @@ function renderRoute() {
 
         d3.select("#route-tooltip").classed("hidden", false);
 
+        d3.select("#diagram").style("cursor", "pointer");
+
     });
-    
+
     route.on("mouseout", function () {
         d3.select("#route-tooltip").classed("hidden", true);
+
+        d3.select("#diagram").style("cursor", "initial");
     });
 }
 
@@ -469,7 +519,7 @@ function getTrajectoryCollection(content) {
             collection.push({
                 routeName: datum[0],
                 routeType: datum[1],
-                stationSequence: +datum[2],
+                stopSequence: +datum[2],
                 stationName: datum[3],
                 arrivalTime: parseTime(datum[4]),
                 departureTime: parseTime(datum[5]),
@@ -494,6 +544,21 @@ function processXhr(xhr) {
     }
     xhr.send();
 }
+
+initData();
+
+d3.select("#btn-submit-departure-arrival")
+        .on("click", function () {
+            d3.select("#diagram-svg")
+                    .remove();
+
+        });
+
+d3.select("#btn-submit-route")
+        .on("click", function () {
+            setData("北京南", "上海虹桥");
+        });
+
 
 </script>
 
