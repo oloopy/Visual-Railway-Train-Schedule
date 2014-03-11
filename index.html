@@ -63,9 +63,9 @@
                 <li class="list-group-item">
                     <div class="input-group">
                         <span class="input-group-addon">Departure</span>
-                        <input type="text" class="form-control" placeholder="e.g. 上海虹桥">
+                        <input id="input-departure" type="text" class="form-control" placeholder="e.g. 上海虹桥">
                         <span class="input-group-addon">Arrival</span>
-                        <input type="text" class="form-control" placeholder="e.g. 北京南">
+                        <input id="input-arrival" type="text" class="form-control" placeholder="e.g. 北京南">
                         <span class="input-group-btn">
                             <button id="btn-submit-departure-arrival" class="btn btn-default" type="button">Submit
                             </button>
@@ -75,7 +75,7 @@
                 <li class="list-group-item">
                     <div class="input-group">
                         <span class="input-group-addon">Route</span>
-                        <input type="text" class="form-control" placeholder="e.g. G101">
+                        <input id="input-route" type="text" class="form-control" placeholder="e.g. G101">
                         <span class="input-group-btn">
                             <button id="btn-submit-route" class="btn btn-default" type="button">Submit</button>
                         </span>
@@ -88,14 +88,12 @@
     </div>
 
 
-    <div class="panel panel-default">
+    <div id="diagram-panel" class="panel panel-default">
 
         <div class="panel-heading">
             <h4 class="panel-title">
                 <span class="glyphicon glyphicon-road">&nbsp;</span>
-                <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
-                    Diagram
-                </a>
+                Diagram
             </h4>
         </div>
 
@@ -204,8 +202,7 @@ function initData() {
             filterData(dummyDeparture, dummyArrival);
             renderData();
 
-            $('.progress').hide();
-
+            $(".progress").hide();
         }
     };
     processXhr(xhr);
@@ -345,6 +342,11 @@ function getTrajectoriesOfRoute(trajectoryCollection, route) {
         trajectories.push(trajectoryCollection[i]);
     }
     return trajectories;
+}
+
+function setDiagram() {
+    setDiagramTitle();
+    setDiagramSvg();
 }
 
 function setDiagramTitle() {
@@ -549,14 +551,19 @@ initData();
 
 d3.select("#btn-submit-departure-arrival")
         .on("click", function () {
-            d3.select("#diagram-svg")
+            d3.selectAll("#diagram-svg")
                     .remove();
 
+            var departureStation = document.getElementById("input-departure").value;
+            var arrivalStation = document.getElementById("input-arrival").value;
+            setData(departureStation, arrivalStation);
+
+            window.location = "#diagram-panel";
         });
 
 d3.select("#btn-submit-route")
         .on("click", function () {
-            setData("北京南", "上海虹桥");
+
         });
 
 
